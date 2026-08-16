@@ -1,16 +1,16 @@
 import { IMPOSSIBLE, VersionInfo } from '@start9labs/start-sdk'
 
 export const current = VersionInfo.of({
-  version: '2.0.0:9',
+  version: '2.2.7:0',
   releaseNotes: {
-    en_US: 'Internal updates (start-sdk 2.0.x)',
-    es_ES: 'Actualizaciones internas (start-sdk 2.0.x)',
-    de_DE: 'Interne Aktualisierungen (start-sdk 2.0.x)',
-    pl_PL: 'Aktualizacje wewnętrzne (start-sdk 2.0.x)',
-    fr_FR: 'Mises à jour internes (start-sdk 2.0.x)',
+    en_US: 'Initial release of NextExplorer for StartOS.',
+    es_ES: 'Versión inicial de NextExplorer para StartOS.',
+    de_DE: 'Erstveröffentlichung von NextExplorer für StartOS.',
+    pl_PL: 'Pierwsze wydanie NextExplorer dla StartOS.',
+    fr_FR: 'Version initiale de NextExplorer pour StartOS.',
   },
   migrations: {
-    up: async ({ effects }) => {},
+    up: async () => {},
     down: IMPOSSIBLE,
   },
 })

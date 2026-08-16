@@ -1,17 +1,31 @@
 # Updating the upstream version
 
-This package wraps Start9 Labs' own [hello-world](https://github.com/Start9Labs/hello-world) source, which we build and publish ourselves as `ghcr.io/start9labs/hello-world`. "Upstream" here means that source repo, not the image namespace.
-
 ## Determining the upstream version
 
-- **hello-world** ([Start9Labs/hello-world](https://github.com/Start9Labs/hello-world)) — fetch the latest release tag:
+**NextExplorer** — [nxzai/NextExplorer](https://github.com/nxzai/NextExplorer):
 
-  ```sh
-  gh release view -R Start9Labs/hello-world --json tagName -q .tagName
-  ```
+```sh
+gh release view -R nxzai/NextExplorer --json tagName -q .tagName
+```
 
-  The current pin lives in `startos/manifest/index.ts` at `images['hello-world'].source.dockerTag` (the version after the `:` in `ghcr.io/start9labs/hello-world:<version>`).
+Every release this project has published is flagged stable; there are no prereleases or drafts.
+
+Confirm the tag exists on Docker Hub and carries both architectures before pinning it:
+
+```sh
+curl -fsSL "https://hub.docker.com/v2/repositories/nxzai/explorer/tags/<tag>" \
+  | jq -r '.images[] | "\(.architecture) \(.os)"'
+```
+
+Expect `amd64 linux` and `arm64 linux`.
+
+Two traps:
+
+- **The Docker tag keeps the leading `v`.** Git `v2.2.7` is published as `v2.2.7`; the bare `2.2.7` does not exist.
+- **Check Docker Hub, not GHCR.** `ghcr.io/nxzai/explorer` exists but its package visibility was never made public, so anonymous requests return **401**. That is not evidence the image is missing — the repository is simply private. Docker Hub is the canonical registry; the GHCR mirror was added alongside it in v2.0.3, never as a replacement.
 
 ## Applying the bump
 
-- Bump `dockerTag` in `startos/manifest/index.ts` to `ghcr.io/start9labs/hello-world:<new version>` (drop the leading `v` from the release tag).
+Edit `startos/manifest/index.ts` and set `dockerVersion` to the new tag, then bump `version` and rewrite `releaseNotes` in `startos/versions/current.ts`.
+
+Read the release notes for the range being crossed, and check `backend/src/config/env.js` for changes to the environment variables the package sets — `AUTH_ADMIN_EMAIL`, `AUTH_ADMIN_PASSWORD`, `SESSION_SECRET`, `TERMINAL_ENABLED`. That file is the single source of truth for configuration; there are no CLI flags.
