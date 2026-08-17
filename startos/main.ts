@@ -42,6 +42,10 @@ export const main = sdk.setupMain(async ({ effects }) => {
         command: sdk.useEntrypoint(),
         env: {
           AUTH_ADMIN_EMAIL: adminEmail,
+          // Upstream's ensureEnvAdminUser() calls setLocalPasswordAdmin
+          // unconditionally, so this is re-asserted on every start, not just the
+          // first. That is what makes the credential StartOS-owned -- dropping
+          // the var after bootstrap would leave a restore no way to recover it.
           AUTH_ADMIN_PASSWORD: store.adminPassword,
           SESSION_SECRET: store.sessionSecret,
           TERMINAL_ENABLED: 'false',

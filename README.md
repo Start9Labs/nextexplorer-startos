@@ -9,7 +9,10 @@
 > upstream documentation is accurate and fully applicable — see the
 > Documentation section of `instructions.md` for links.
 
-NextExplorer is a self-hosted web file manager: browse, upload, preview and share files from directories mounted into the container, with local accounts and per-user home folders. Upstream: <https://github.com/nxzai/NextExplorer>.
+[NextExplorer](https://github.com/nxzai/NextExplorer) is a web file manager: browse, upload, preview and share files, with local accounts and per-user home folders. On StartOS its files, its database and its regenerable caches live on three separate volumes, the admin credential is owned by StartOS rather than by the application, and the built-in terminal is disabled.
+
+- **Upstream repo:** <https://github.com/nxzai/NextExplorer>
+- **Wrapper repo:** <https://github.com/Start9Labs/nextexplorer-startos>
 
 ---
 
@@ -26,56 +29,70 @@ NextExplorer is a self-hosted web file manager: browse, upload, preview and shar
 - [Health Checks](#health-checks)
 - [Backups and Restore](#backups-and-restore)
 - [Limitations and Differences](#limitations-and-differences)
-- [Troubleshooting](#troubleshooting)
-- [Contributing](#contributing)
 - [Quick Reference for AI Consumers](#quick-reference-for-ai-consumers)
 
 ---
 
 ## Image and Container Runtime
 
-One prebuilt upstream image, run in a single subcontainer named `nextexplorer-sub`. A Node/Express backend serves both the API and the prebuilt Vue SPA from one port.
+The upstream image is used unmodified, with its own entrypoint, and one subcontainer runs the service. A Node/Express backend serves the API and the prebuilt Vue SPA from a single port.
 
-| | |
-| --- | --- |
-| Image id | `nextexplorer` |
-| Upstream image | `nxzai/explorer` |
-| Architectures | `x86_64`, `aarch64` |
-| Subcontainer | `nextexplorer-sub` |
-| Runs as | root entrypoint, dropping to uid 1000 |
+| Property      | Value                                                                 |
+| ------------- | --------------------------------------------------------------------- |
+| Image         | `nxzai/explorer`                                                      |
+| Architectures | x86_64, aarch64                                                       |
+| Entrypoint    | Upstream default                                                      |
+| Runs as       | root, dropping to uid 1000                                            |
+| Subcontainer  | `nextexplorer-sub` — the `primary` daemon, and the one to `attach` to |
 
-The image declares no `USER`, and its entrypoint must run as root: it calls `usermod`/`groupmod` to align the app user with `PUID`/`PGID` and then `gosu`s down to uid 1000. Running the container as a non-root user makes the entrypoint fail outright. The package therefore launches `sdk.useEntrypoint()` as root and lets it drop privileges itself.
+The image declares no `USER` and its entrypoint must start as root: it calls `usermod`/`groupmod` to align the application user with `PUID`/`PGID` and then `gosu`s down to uid 1000. Running the container as a non-root user makes the entrypoint fail outright, so the package launches it as root and lets it drop privileges itself.
 
-Note that the upstream image is published to Docker Hub only. A GHCR mirror exists but was never made public — it returns 401 rather than 404, which is easy to misread as "the artifact is missing".
+The same subcontainer also runs a `prepare-storage` oneshot, ahead of the daemon on every start — see [Installation and First-Run Flow](#installation-and-first-run-flow).
+
+Only Docker Hub is a valid source for this image. A GHCR mirror exists but was never made public, and returns 401 rather than 404 — which is easy to misread as the artifact being missing.
 
 ### StartOS-managed environment variables
 
-| Variable | Why |
-| --- | --- |
-| `AUTH_ADMIN_EMAIL` | Identifies the bootstrapped admin account |
-| `AUTH_ADMIN_PASSWORD` | Applied from the package store on every start |
-| `SESSION_SECRET` | Generated once at install and persisted; the upstream default is random per boot, which would sign every user out on restart |
-| `TERMINAL_ENABLED` | Forced off — see Limitations |
+Four are set, and each is applied on every start rather than only at install.
+
+| Variable              | Why                                                                                                                        |
+| --------------------- | -------------------------------------------------------------------------------------------------------------------------- |
+| `AUTH_ADMIN_EMAIL`    | Identifies the bootstrapped admin account — `admin@nextexplorer.local`                                                     |
+| `AUTH_ADMIN_PASSWORD` | The credential from the package store; upstream re-asserts it on every start, which is what makes it StartOS-owned         |
+| `SESSION_SECRET`      | Generated once at install and persisted; upstream's default is random per boot, which would sign every user out on restart |
+| `TERMINAL_ENABLED`    | Forced off — see [Limitations and Differences](#limitations-and-differences)                                               |
 
 ## Volume and Data Layout
 
 Three volumes, split by durability.
 
-| Volume | Mount | Contents |
-| --- | --- | --- |
-| `data` | `/mnt` | The user's files |
-| `config` | `/config` | SQLite database, package store, uploaded branding |
-| `cache` | `/cache` | Thumbnails and the session store |
+| Volume   | Mount Point | Purpose                                              |
+| -------- | ----------- | ---------------------------------------------------- |
+| `data`   | `/mnt`      | The user's files                                     |
+| `config` | `/config`   | The SQLite database, the package store, and branding |
+| `cache`  | `/cache`    | Thumbnails and the session store                     |
 
-`/mnt` is `VOLUME_ROOT`, and NextExplorer turns each of its immediate subdirectories into a top-level drive in the UI. An empty `/mnt` therefore presents the user with nothing to click, so the `prepare-storage` oneshot creates a `Files` directory inside it.
+`/mnt` is `VOLUME_ROOT`, and NextExplorer turns each of its immediate subdirectories into a top-level drive in the UI. An empty `/mnt` therefore presents the user with nothing to click, which is why the `prepare-storage` oneshot creates a `Files` directory inside it.
 
-`/cache` is mounted rather than left on the container's writable layer so that thumbnail generation has somewhere durable to go without inflating the backup.
+`/cache` is a mounted volume rather than the container's writable layer so that thumbnail generation has somewhere durable to go without inflating the backup.
+
+The application's database is `/config/app.db`.
 
 ## File Models
 
-One model, `startos/fileModels/store.json.ts`, bound to `/config/startos.json`.
+One model, and it holds only the two secrets the package owns.
 
-NextExplorer has no config file worth binding — it is configured entirely by environment variables, plus a JSON file and SQLite tables it manages itself. The store therefore holds only the two secrets the package owns: `adminPassword` and `sessionSecret`.
+| File           | Format | Modelled                | Written by                                 |
+| -------------- | ------ | ----------------------- | ------------------------------------------ |
+| `startos.json` | JSON   | Yes — `FileHelper.json` | Install, and the Set Admin Password action |
+
+NextExplorer has no configuration file worth binding: it is configured entirely by environment variables, plus a JSON file and SQLite tables it manages itself.
+
+**Yours, but only through the action:** `adminPassword`. It is written by Set Admin Password and read into `AUTH_ADMIN_PASSWORD` on every start, so it is the source of truth for that account rather than whatever NextExplorer has stored.
+
+**Seeded once and then fixed:** `sessionSecret`, generated at install and never rewritten. It is what makes signed-in sessions survive a restart; if it ever went missing the package would refuse to start rather than let the application fall back to a per-boot random value and silently sign everyone out.
+
+A hand edit to either key survives — nothing re-asserts them — but there is no reason to make one, and the service must be restarted for a change to reach the container.
 
 ## Dependencies
 
@@ -83,65 +100,84 @@ None.
 
 ## Network Access and Interfaces
 
-A single HTTP interface. API, SPA and the WebSocket endpoint all share one port.
+One interface. The API, the SPA and the WebSocket endpoint all share it.
 
-| Interface | Type | Port |
-| --- | --- | --- |
-| `ui` | ui | 3000 |
+| Interface | Id   | Type | Port | Description                    |
+| --------- | ---- | ---- | ---- | ------------------------------ |
+| Web UI    | `ui` | ui   | 3000 | The NextExplorer web interface |
 
-`PUBLIC_URL` is deliberately left unset. Setting it would pin CORS to one origin, and StartOS serves the same service over both a LAN address and a `.onion`. Left unset, NextExplorer allows any origin, share links are built client-side from `window.location.origin`, and the session cookie's `secure` flag adapts per request — so both addresses work.
+The port is bound on the `main` MultiHost and is not masked.
+
+`PUBLIC_URL` is deliberately left unset. Setting it pins CORS to one origin, and StartOS serves the same service over a LAN address and a `.onion` at once. Left unset, NextExplorer allows any origin, share links are built client-side from `window.location.origin`, and the session cookie's `secure` flag adapts per request — so every address the user has published works.
 
 ## Installation and First-Run Flow
 
-On install the package seeds the store, generating `SESSION_SECRET`, and raises a critical task to set the admin password. Because the task is critical, the service cannot start until it is done.
+There is no first-run screen. Install seeds the store and then asks you for the one value it cannot generate on your behalf:
 
-Running **Set Admin Password** writes the credential to the store and clears the task. NextExplorer's own bootstrap then creates the admin account before the HTTP server binds, so a 200 from the health check means the account already exists. `main.ts` reads the store with `.const(effects)`, so rotating the password restarts the service and takes effect immediately.
+1. The package store is created and `SESSION_SECRET` is generated into it.
+2. A `critical` task is raised pointing at Set Admin Password.
+3. Running that action writes the credential and clears the task.
+
+`critical` blocks the service from starting, so NextExplorer never serves without an admin password. It also never starts with a partial one: if either secret is somehow absent, the package raises rather than passing an empty value through, because NextExplorer skips its admin bootstrap below six characters and would leave its setup wizard open to whoever reached it first.
+
+On every start thereafter, the `prepare-storage` oneshot runs as root before the daemon: it creates `/mnt/Files` and hands `/mnt` to uid 1000. The image's own entrypoint chowns `/config` and `/cache` but never the storage root, and the resulting failure is a quiet one — browsing works and every write returns `EACCES` — so if uploads and folder creation fail while the UI is otherwise fine, that oneshot's log line is the first thing to read.
+
+NextExplorer runs its own database migrations and creates the admin account before it binds the port, so by the time the health check passes the account already exists.
 
 ## Actions
 
-One, because NextExplorer administers everything else from inside its own UI.
+One action, user-facing. Everything else NextExplorer administers from inside its own UI.
 
-| Action | When to run | Effect |
-| --- | --- | --- |
-| `set-admin-password` | At install, or to rotate the credential | Generates a new random password and stores it. Repeat-safe. Applied on the next start. |
+### Set Admin Password
+
+Generates a new random password for the bootstrapped admin account. Run it when the install task prompts, and any time you need to rotate the credential.
+
+- **What it changes:** `adminPassword` in the package store, which reaches the application as `AUTH_ADMIN_PASSWORD` on the next start.
+- **Availability:** any status.
+- **Cost:** seconds, then a restart.
+- **Repeat safety:** safe to re-run; each run generates a fresh password and the previous one stops working once the service restarts.
+- **Outputs:** the sign-in email and the new password, the password masked and copyable, shown once.
 
 ## Tasks
 
-| Task | Severity | Raised when |
-| --- | --- | --- |
-| `set-admin-password` | critical | The store has no admin password |
+One task, raised at install, and it blocks the service until you clear it.
+
+| Task               | Severity   | Raised when                       | Cleared when    |
+| ------------------ | ---------- | --------------------------------- | --------------- |
+| Set Admin Password | `critical` | The store holds no admin password | The action runs |
+
+The condition is re-evaluated on every init, so the task returns if the password is ever removed from the store.
 
 ## Health Checks
 
-The `primary` daemon's `ready` check requests `GET /healthz` and expects 200.
+One check, on the only daemon.
 
-The endpoint is mounted before any auth middleware, and the app runs its database migrations and admin bootstrap inside `await bootstrap()` *before* `app.listen()`. A 200 therefore means initialised and serving, not merely "process started".
+| Check     | Displayed       | Method                           |
+| --------- | --------------- | -------------------------------- |
+| `primary` | "Web Interface" | `GET /healthz` on the local port |
+
+The endpoint is mounted ahead of any auth middleware, so the check needs no credentials. It passes as soon as the port answers — and that is a meaningful signal here rather than a bare liveness probe, because NextExplorer runs its database migrations and its admin bootstrap inside `await bootstrap()` _before_ `app.listen()`. Nothing answers on port 3000 until both have finished.
+
+A failure therefore means the process is down or crash-looping, not that it is still initialising. On a first start the likeliest cause is that `prepare-storage` did not complete.
 
 ## Backups and Restore
 
-`data` and `config` are backed up by direct volume sync. `cache` is excluded: it holds only thumbnails and the session store, both of which NextExplorer regenerates — restoring without it costs users a re-login and some thumbnail rework.
+`data` and `config` are copied wholesale — `sdk.Backups.ofVolumes('data', 'config')`. No dump step.
 
-The database at `/config/app.db` is SQLite. StartOS quiesces the service before syncing, so it is captured at rest rather than hot.
+- **Included:** every file the user has stored, the SQLite database with its accounts and shares, the uploaded branding, and the package store — so both secrets, and with them every existing session and the admin credential.
+- **Excluded:** `cache`. It holds thumbnails and the session store, both of which NextExplorer regenerates; restoring without it costs users a re-login and some thumbnail rework.
+- **Restore:** complete. Accounts and passwords return as they were, so the install task does not reappear.
+
+The database is SQLite and StartOS quiesces the service before syncing, so it is captured at rest rather than hot.
+
+Note the size implication: `data` is the whole file tree, so the backup is as large as what the user has stored.
 
 ## Limitations and Differences
 
-- **The built-in terminal is disabled.** Upstream ships `TERMINAL_ENABLED=true`, which gives any admin a shell inside the service container. That is not a file-management feature and it widens the blast radius of a compromised admin session, so the package forces it off.
-- **The admin password is owned by StartOS, not by NextExplorer.** `AUTH_ADMIN_PASSWORD` is re-applied on every start, and upstream's bootstrap re-asserts it unconditionally rather than only on first run. Changing the admin password inside NextExplorer's own UI will therefore be reverted on the next restart — rotate it with the action instead. This applies only to the bootstrapped admin account; passwords for accounts created inside NextExplorer are untouched.
-- **Only Docker Hub is a valid source for the image.** See Image and Container Runtime.
-
-## Troubleshooting
-
-**Uploads and folder creation fail with `EACCES`, but browsing works.** The storage root is not owned by uid 1000. The image's entrypoint chowns `/config` and `/cache` but never `/mnt`, which is why the `prepare-storage` oneshot exists; if it was skipped or failed, its log line will say so.
-
-**Everyone is signed out after a restart.** `SESSION_SECRET` did not reach the container, so NextExplorer generated a random one at boot. Check that `/config/startos.json` contains `sessionSecret`.
-
-**A password set inside NextExplorer stopped working.** Expected for the admin account — see Limitations.
-
-To inspect the running container: `start-cli package attach nextexplorer -n nextexplorer-sub -- <cmd>`.
-
-## Contributing
-
-Build and development workflow follow the StartOS packaging guide: <https://docs.start9.com/packaging>. Keep `README.md`, `instructions.md`, and `AGENTS.md` in sync with any change to user-visible behavior or package structure.
+1. **The admin password is owned by StartOS, not by NextExplorer.** Upstream's bootstrap re-asserts `AUTH_ADMIN_PASSWORD` on every start rather than only on first run, so a password changed inside NextExplorer's own settings page is reverted on the next restart. Rotate it with the action instead. Accounts created inside NextExplorer are untouched.
+2. **The built-in terminal is disabled.** Upstream ships `TERMINAL_ENABLED=true`, which gives any admin a shell inside the service container.
+3. **Only Docker Hub is a valid source for the image** — see [Image and Container Runtime](#image-and-container-runtime).
+4. **No riscv64 build.** x86_64 and aarch64 only.
 
 ---
 
@@ -150,8 +186,11 @@ Build and development workflow follow the StartOS packaging guide: <https://docs
 ```yaml
 package_id: nextexplorer
 image: nxzai/explorer
-architectures: [x86_64, aarch64]
-subcontainers: [nextexplorer-sub]
+architectures:
+  - x86_64
+  - aarch64
+subcontainers:
+  - nextexplorer-sub # the running daemon, and the prepare-storage oneshot
 volumes:
   data: /mnt
   config: /config
@@ -162,14 +201,14 @@ startos_managed_env_vars:
   - AUTH_ADMIN_EMAIL
   - AUTH_ADMIN_PASSWORD
   - SESSION_SECRET
-  - TERMINAL_ENABLED
-dependencies: none
+  - TERMINAL_ENABLED # forced false
+dependencies: []
 interfaces:
-  ui: { type: ui, port: 3000 }
+  ui: { type: ui, port: 3000 } # API, SPA and WebSocket on the same port
 actions:
   - set-admin-password
 tasks:
   - { action: set-admin-password, severity: critical }
 health_checks:
-  - primary
+  - primary # the daemon's ready check, displayed "Web Interface"
 ```
