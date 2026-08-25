@@ -12,7 +12,7 @@
 [NextExplorer](https://github.com/nxzai/NextExplorer) is a web file manager: browse, upload, preview and share files, with local accounts and per-user home folders. On StartOS its files, its database and its regenerable caches live on three separate volumes, the admin credential is owned by StartOS rather than by the application, non-admin accounts reach only the folders an admin assigns them, and the built-in terminal is disabled.
 
 - **Upstream repo:** <https://github.com/nxzai/NextExplorer>
-- **Wrapper repo:** <https://github.com/Start9Labs/nextexplorer-startos>
+- **Wrapper repo:** <https://github.com/Start9-Community/nextexplorer-startos>
 
 ---
 

@@ -8,7 +8,7 @@ export const manifest = setupManifest({
   id: 'nextexplorer',
   title: 'NextExplorer',
   license: 'GPL-3.0-only',
-  packageRepo: 'https://github.com/Start9Labs/nextexplorer-startos',
+  packageRepo: 'https://github.com/Start9-Community/nextexplorer-startos',
   upstreamRepo: 'https://github.com/nxzai/NextExplorer',
   marketingUrl: 'https://nxzai.github.io/NextExplorer/',
   donationUrl: null,
