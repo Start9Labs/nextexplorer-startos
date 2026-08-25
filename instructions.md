@@ -2,18 +2,19 @@
 
 ## Documentation
 
-- [NextExplorer documentation](https://explorer.nxz.ai/) — the full upstream manual.
-- [FAQ](https://explorer.nxz.ai/reference/faq.html) — common questions about storage, thumbnails and sharing.
+- [NextExplorer documentation](https://nxzai.github.io/NextExplorer/) — the full upstream manual.
+- [Features](https://nxzai.github.io/NextExplorer/experience/features.html) — what the file manager can do, screen by screen.
+- [User volumes](https://nxzai.github.io/NextExplorer/admin/user-volumes.html) — assigning folders to the people you add.
 
 ## What you get on StartOS
 
-NextExplorer is a file manager you use from a web browser. Upload files from any device, organize them into folders, and open images, video, audio, PDFs and documents right in the page without downloading them first. Text files can be edited in place, and there's a search box that looks across everything you've stored.
+One web interface, and a drive called **Files** behind it. Everything you upload lives on your server and goes into your StartOS backups along with your accounts, your share links and your settings.
 
-You can also create accounts for other people, give each of them their own private folder, and hand out links to individual files or folders when you want to share something.
+StartOS issues the admin sign-in for you rather than leaving you to create it in a setup screen, and it is the only place that credential can be changed. Each extra account you create is private by default: its own **My Files** space, and no shared folders until you grant them.
 
 ## Getting set up
 
-1. Install NextExplorer. StartOS will show a task telling you to set an admin password — the service will not start until you do.
+1. StartOS will show a task telling you to set an admin password — the service will not start until you do.
 2. Run the **Set Admin Password** action. It generates a strong password and shows it to you along with the email address to sign in with. **Copy both into your password manager now.**
 3. Start NextExplorer and open the **Web UI**.
 4. Sign in with the email and password from step 2.
@@ -36,10 +37,18 @@ Right-click a file or folder and choose to share it. NextExplorer creates a link
 
 ### Adding people
 
-In **Settings**, create accounts for other people. Each account can be given its own folder so people don't see each other's files. You manage all of this inside NextExplorer — StartOS is not involved.
+Go to **Settings → Admin → Users** and create an account. A new account starts with nothing shared: it sees only its own **My Files** space, which no one else can open.
+
+To let someone into your files, open their account, go to the **Volumes** tab, and add each folder they should reach — you give it a label, pick the folder, and choose read-only or read/write. They see the labels you chose and nothing else. You manage all of this inside NextExplorer; StartOS is not involved.
+
+Your own account is the administrator and always sees every folder.
 
 ### Actions
 
 **Set Admin Password** — generates a new random password for the admin account. Use it the first time, and any time you want to rotate the credential.
 
 Change the admin password **here**, not inside NextExplorer. StartOS re-applies the stored password every time the service starts, so a change made in NextExplorer's own settings page will be undone on the next restart. This applies only to the admin account you were given at setup — passwords for accounts you create inside NextExplorer work normally and are never touched.
+
+## Limitations
+
+**The built-in terminal is unavailable.** Upstream ships a terminal that gives any administrator a shell inside the service, and it is switched off here. Nothing else in the file manager depends on it.

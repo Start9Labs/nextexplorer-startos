@@ -28,4 +28,4 @@ Two traps:
 
 Edit `startos/manifest/index.ts` and set `dockerVersion` to the new tag, then bump `version` and rewrite `releaseNotes` in `startos/versions/current.ts`.
 
-Read the release notes for the range being crossed, and check `backend/src/config/env.js` for changes to the environment variables the package sets — `AUTH_ADMIN_EMAIL`, `AUTH_ADMIN_PASSWORD`, `SESSION_SECRET`, `TERMINAL_ENABLED`. That file is the single source of truth for configuration; there are no CLI flags.
+Read the release notes for the range being crossed, and check `backend/src/config/env.js` for changes to the environment variables the package sets — `AUTH_ADMIN_EMAIL`, `AUTH_ADMIN_PASSWORD`, `SESSION_SECRET`, `TRUST_PROXY`, `TERMINAL_ENABLED`, `USER_VOLUMES`, `USER_DIR_ENABLED`. That file is the single source of truth for configuration; there are no CLI flags.

@@ -8,10 +8,7 @@ export const main = sdk.setupMain(async ({ effects }) => {
 
   const store = await storeJson.read().const(effects)
   if (!store?.adminPassword || !store.sessionSecret) {
-    // Unreachable: seedFiles generates the session secret, and a critical task
-    // blocks startup until the password is set. Refuse rather than substitute
-    // an empty value -- NextExplorer skips its admin bootstrap below six
-    // characters, leaving the setup wizard open to whoever reaches it first.
+    // NextExplorer skips its admin bootstrap for a password under six characters.
     throw new Error('Generated secrets are missing from the package store')
   }
 
@@ -42,13 +39,15 @@ export const main = sdk.setupMain(async ({ effects }) => {
         command: sdk.useEntrypoint(),
         env: {
           AUTH_ADMIN_EMAIL: adminEmail,
-          // Upstream's ensureEnvAdminUser() calls setLocalPasswordAdmin
-          // unconditionally, so this is re-asserted on every start, not just the
-          // first. That is what makes the credential StartOS-owned -- dropping
-          // the var after bootstrap would leave a restore no way to recover it.
+          // Upstream re-asserts this on every start, not only the first.
           AUTH_ADMIN_PASSWORD: store.adminPassword,
           SESSION_SECRET: store.sessionSecret,
+          // The OS proxy strips the client's own header and writes exactly one hop.
+          TRUST_PROXY: '1',
           TERMINAL_ENABLED: 'false',
+          // Off, every account reads and writes every volume under VOLUME_ROOT.
+          USER_VOLUMES: 'true',
+          USER_DIR_ENABLED: 'true',
         },
       },
       ready: {
