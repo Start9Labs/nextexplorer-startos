@@ -1,20 +1,25 @@
 import { setupManifest } from '@start9labs/start-sdk'
 import { long, short } from './i18n'
 
+const dockerImage = 'nxzai/explorer'
+const dockerVersion = 'v2.2.7'
+
 export const manifest = setupManifest({
-  id: 'hello-world',
-  title: 'Hello World',
-  license: 'MIT',
-  packageRepo: 'https://github.com/Start9Labs/hello-world-startos',
-  upstreamRepo: 'https://github.com/Start9Labs/hello-world',
-  marketingUrl: 'https://start9.com/',
-  donationUrl: 'https://donate.start9.com/',
+  id: 'nextexplorer',
+  title: 'NextExplorer',
+  license: 'GPL-3.0-only',
+  packageRepo: 'https://github.com/Start9-Community/nextexplorer-startos',
+  upstreamRepo: 'https://github.com/nxzai/NextExplorer',
+  marketingUrl: 'https://nxzai.github.io/NextExplorer/',
+  donationUrl: null,
   description: { short, long },
-  volumes: ['main'],
+  volumes: ['data', 'config', 'cache'],
   images: {
-    'hello-world': {
-      source: { dockerTag: 'ghcr.io/start9labs/hello-world:2.0.0' },
-      arch: ['x86_64', 'aarch64', 'riscv64'],
+    nextexplorer: {
+      source: {
+        dockerTag: `${dockerImage}:${dockerVersion}`,
+      },
+      arch: ['x86_64', 'aarch64'],
     },
   },
   dependencies: {},
