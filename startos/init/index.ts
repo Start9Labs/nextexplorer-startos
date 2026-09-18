@@ -6,6 +6,7 @@ import { actions } from '../actions'
 import { restoreInit } from '../backups'
 import { seedFiles } from './seedFiles'
 import { watchCredentials } from './watchCredentials'
+import { watchFileBrowser } from './watchFileBrowser'
 
 export const init = sdk.setupInit(
   restoreInit,
@@ -15,6 +16,7 @@ export const init = sdk.setupInit(
   setDependencies,
   actions,
   watchCredentials,
+  watchFileBrowser,
 )
 
 export const uninit = sdk.setupUninit(versionGraph)

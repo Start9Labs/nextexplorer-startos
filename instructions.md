@@ -21,6 +21,21 @@ StartOS issues the admin sign-in for you rather than leaving you to create it in
 
 You'll land in a drive called **Files**. That's your storage — everything you put there is kept on your server.
 
+## Coming from File Browser
+
+If File Browser or FileBrowser Quantum is installed on this server, StartOS shows a task suggesting you import its files. You can run it right away or dismiss it and come back later.
+
+**Only your files come across.** The **Import Files from File Browser** action copies everything in File Browser's storage into a new drive called **FileBrowser**. It does not touch File Browser, it takes seconds however much you have stored, and it uses no extra space. Run it again at any time and it picks up only what is new.
+
+What the import does not bring, because File Browser keeps it in its own database:
+
+- **Accounts and passwords.** Create each person's account again in NextExplorer under **Settings → Admin → Users**.
+- **Folder restrictions.** Open each new account's **Volumes** tab and add the FileBrowser drive, or just the folders they should reach.
+- **Share links.** Existing links keep pointing at File Browser. Share the files again from NextExplorer.
+- **Settings and branding.**
+
+Once you have checked the result, move on: point any other service that reads from File Browser (Jellyfin, Immich, Nextcloud, qBittorrent, Start9 Pages and the like) at NextExplorer instead, and only then uninstall File Browser. Moving folders from the FileBrowser drive into Files is instant.
+
 ## Using NextExplorer
 
 ### Web interface
@@ -46,6 +61,8 @@ Your own account is the administrator and always sees every folder.
 ### Actions
 
 **Set Admin Password** — generates a new random password for the admin account. Use it the first time, and any time you want to rotate the credential.
+
+**Import Files from File Browser** — copies the files stored in File Browser or FileBrowser Quantum into a drive called FileBrowser. Files only; see [Coming from File Browser](#coming-from-file-browser). Shown only while File Browser is installed.
 
 Change the admin password **here**, not inside NextExplorer. StartOS re-applies the stored password every time the service starts, so a change made in NextExplorer's own settings page will be undone on the next restart. This applies only to the admin account you were given at setup — passwords for accounts you create inside NextExplorer work normally and are never touched.
 

@@ -7,6 +7,8 @@ export const cachePath = '/cache'
 
 // Each immediate subdirectory of VOLUME_ROOT appears as a top-level drive in the UI.
 export const defaultLibrary = 'Files'
+export const importDrive = 'FileBrowser'
+export const importMountpoint = '/import'
 
 export const adminEmail = 'admin@nextexplorer.local'
 

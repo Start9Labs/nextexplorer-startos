@@ -9,10 +9,10 @@
 > upstream documentation is accurate and fully applicable — see the
 > Documentation section of `instructions.md` for links.
 
-[NextExplorer](https://github.com/nxzai/NextExplorer) is a web file manager: browse, upload, preview and share files, with local accounts and per-user home folders. On StartOS its files, its database and its regenerable caches live on three separate volumes, the admin credential is owned by StartOS rather than by the application, non-admin accounts reach only the folders an admin assigns them, and the built-in terminal is disabled.
+[NextExplorer](https://github.com/nxzai/NextExplorer) is a web file manager: browse, upload, preview and share files, with local accounts and per-user home folders. On StartOS its files, its database and its regenerable caches live on three separate volumes, the admin credential is owned by StartOS rather than by the application, non-admin accounts reach only the folders an admin assigns them, and the built-in terminal is disabled. Files kept in File Browser or FileBrowser Quantum can be imported into a drive of their own.
 
 - **Upstream repo:** <https://github.com/nxzai/NextExplorer>
-- **Wrapper repo:** <https://github.com/Start9-Community/nextexplorer-startos>
+- **Wrapper repo:** <https://github.com/Start9Labs/nextexplorer-startos>
 
 ---
 
@@ -79,6 +79,10 @@ Three volumes, split by durability.
 
 `/mnt/_users` is the exception: it is `USER_ROOT`, holding one private directory per account, and NextExplorer excludes the name from the drive listing and from the admin's folder picker.
 
+`/mnt/FileBrowser` exists only after [Import Files from File Browser](#import-files-from-file-browser) has run; it is an ordinary drive and can be renamed or merged into `Files` from the UI.
+
+Other packages mount the `data` volume by name (Jellyfin, Immich, Nextcloud, qBittorrent and others read or write under it), so the volume id is load-bearing.
+
 `/cache` is a mounted volume rather than the container's writable layer so that thumbnail generation has somewhere durable to go without inflating the backup.
 
 The application's database is `/config/app.db`.
@@ -101,7 +105,13 @@ A hand edit to either key survives — nothing re-asserts them — and `main` ho
 
 ## Dependencies
 
-None.
+One, optional, and never declared as a current dependency: nothing about NextExplorer's own operation needs File Browser.
+
+| Dependency    | Kind | Used by                                                                                           |
+| ------------- | ---- | ------------------------------------------------------------------------------------------------- |
+| `filebrowser` | —    | [Import Files from File Browser](#import-files-from-file-browser), which mounts its `data` volume |
+
+The manifest entry exists so the import action can mount the volume with a typed `mountDependency`. Either flavor under the `filebrowser` id, File Browser or FileBrowser Quantum, satisfies it, since both keep their files at the root of the same `data` volume.
 
 ## Network Access and Interfaces
 
@@ -125,7 +135,8 @@ There is no first-run screen. Install seeds the store and then asks you for the 
 
 1. The package store is created and `SESSION_SECRET` is generated into it.
 2. A `critical` task is raised pointing at Set Admin Password.
-3. Running that action writes the credential and clears the task.
+3. If a package with the id `filebrowser` is installed, an `important` task is raised pointing at Import Files from File Browser.
+4. Running Set Admin Password writes the credential and clears its task.
 
 `critical` blocks the service from starting, so NextExplorer never serves without an admin password. It also never starts with a partial one: if either secret is somehow absent, the package raises rather than passing an empty value through, because NextExplorer skips its admin bootstrap below six characters and would leave its setup wizard open to whoever reached it first.
 
@@ -135,7 +146,7 @@ NextExplorer runs its own database migrations and creates the admin account befo
 
 ## Actions
 
-One action, user-facing. Everything else NextExplorer administers from inside its own UI.
+Two actions, both user-facing. Everything else NextExplorer administers from inside its own UI.
 
 ### Set Admin Password
 
@@ -147,15 +158,30 @@ Generates a new random password for the bootstrapped admin account. Run it when 
 - **Repeat safety:** safe to re-run; each run generates a fresh password and the previous one stops working once the service restarts.
 - **Outputs:** the sign-in email and the new password, the password masked and copyable, shown once.
 
+### Import Files from File Browser
+
+Copies everything at the root of File Browser's `data` volume into `/mnt/FileBrowser`, so it appears in NextExplorer as a drive named **FileBrowser**. Works for File Browser and FileBrowser Quantum alike, since both share the package id and the volume.
+
+- **What it changes:** creates or extends `/mnt/FileBrowser` on the `data` volume. File Browser's volume is mounted read-only and never written.
+- **Availability:** any status; the action is hidden while no `filebrowser` package is installed, and refuses to run if one is not.
+- **Cost:** seconds on btrfs. Every file is cloned with a reflink, so the copy shares extents with the original and consumes no additional space until either side is modified. On a filesystem without reflinks each file is copied in full.
+- **Repeat safety:** safe to re-run. A file that already exists at the destination is skipped, so a second run picks up only what File Browser gained since.
+- **Outputs:** how many files were imported and their total size, how many were skipped, whether the copies share storage, and the first error if any file could not be read. The same summary is written to the service log as JSON.
+
+Mechanics: a temporary subcontainer of the `nextexplorer` image runs a Node script as root with File Browser's volume at `/import` and this package's `data` volume at `/mnt`. Directories are created as needed, regular files are cloned with `COPYFILE_FICLONE_FORCE` and copied in full when the clone fails, symlinks are recreated with their original targets, other file types are skipped, and everything created is chowned to uid 1000 with the source's modification time. Hidden entries are copied like any other. An empty source is reported as an error rather than producing an empty drive.
+
+**What is not imported:** the File Browser database. Accounts, passwords, per-user folder scopes, share links and settings stay behind; the user re-creates accounts in NextExplorer and grants them the drive.
+
 ## Tasks
 
-One task, raised at install, and it blocks the service until you clear it.
+Two tasks, both raised at install. The first blocks the service until you clear it; the second can be dismissed.
 
-| Task               | Severity   | Raised when                       | Cleared when    |
-| ------------------ | ---------- | --------------------------------- | --------------- |
-| Set Admin Password | `critical` | The store holds no admin password | The action runs |
+| Task                           | Severity    | Raised when                                                      | Cleared when                  |
+| ------------------------------ | ----------- | ---------------------------------------------------------------- | ----------------------------- |
+| Set Admin Password             | `critical`  | The store holds no admin password                                | The action runs               |
+| Import Files from File Browser | `important` | A package with the id `filebrowser` is installed at install time | The action runs, or dismissed |
 
-The condition is re-evaluated on every init, so the task returns if the password is ever removed from the store.
+The admin-password condition is re-evaluated on every init, so that task returns if the password is ever removed from the store. The import task is raised once, on `install` only, so a dismissal holds across restarts and updates.
 
 ## Health Checks
 
@@ -187,7 +213,8 @@ Note the size implication: `data` is the whole file tree, so the backup is as la
 2. **The built-in terminal is disabled.** Upstream ships `TERMINAL_ENABLED=true`, which gives any admin a shell inside the service container.
 3. **A non-admin account reaches only the folders it was assigned.** With upstream's `USER_VOLUMES=false`, every authenticated account sees every drive under `VOLUME_ROOT` and can write to all of it; `USER_DIR_ENABLED=false` then leaves the per-account space unreachable from the UI. Neither flag is settable from inside NextExplorer, so both are forced on here: a new account starts with its own space alone, and the admin grants drives from the account's Volumes tab. Admins are exempt from both and still see everything.
 4. **Only Docker Hub is a valid source for the image** — see [Image and Container Runtime](#image-and-container-runtime).
-5. **No riscv64 build.** x86_64 and aarch64 only.
+5. **Importing from File Browser carries files only.** Accounts, passwords, folder scopes and share links are not converted — see [Import Files from File Browser](#import-files-from-file-browser).
+6. **No riscv64 build.** x86_64 and aarch64 only.
 
 ---
 
@@ -215,13 +242,16 @@ startos_managed_env_vars:
   - TERMINAL_ENABLED # forced false
   - USER_VOLUMES # forced true
   - USER_DIR_ENABLED # forced true
-dependencies: []
+dependencies:
+  - filebrowser # optional; mounted only by import-from-filebrowser, never a current dependency
 interfaces:
   ui: { type: ui, port: 3000 } # API and SPA on the same port
 actions:
   - set-admin-password
+  - import-from-filebrowser # files only, reflinked into /mnt/FileBrowser
 tasks:
   - { action: set-admin-password, severity: critical }
+  - { action: import-from-filebrowser, severity: important } # only when filebrowser is installed at install time
 health_checks:
   - primary # the daemon's ready check, displayed "Web Interface"
 ```
