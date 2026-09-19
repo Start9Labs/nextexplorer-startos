@@ -36,6 +36,8 @@ What the import does not bring, because File Browser keeps it in its own databas
 
 Once you have checked the result, move on: point any other service that reads from File Browser (Jellyfin, Immich, Nextcloud, qBittorrent, Start9 Pages and the like) at NextExplorer instead, and only then uninstall File Browser. Moving folders from the FileBrowser drive into Files is instant.
 
+**If you use Nextcloud**, look in its NextExplorer folder before you uninstall File Browser. That folder shows the Files drive, so if what you imported is not there, move it from the FileBrowser drive into Files and it will appear.
+
 ## Using NextExplorer
 
 ### Web interface
