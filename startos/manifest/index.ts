@@ -10,7 +10,7 @@ export const manifest = setupManifest({
   license: 'GPL-3.0-only',
   packageRepo: 'https://github.com/Start9Labs/nextexplorer-startos',
   upstreamRepo: 'https://github.com/nxzai/NextExplorer',
-  marketingUrl: 'https://nxzai.github.io/NextExplorer/',
+  marketingUrl: 'https://explorer.nxz.ai/',
   donationUrl: null,
   description: { short, long },
   // `data` is load-bearing: sibling packages mount it by name.
