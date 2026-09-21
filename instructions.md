@@ -2,9 +2,9 @@
 
 ## Documentation
 
-- [NextExplorer documentation](https://nxzai.github.io/NextExplorer/) — the full upstream manual.
-- [Features](https://nxzai.github.io/NextExplorer/experience/features.html) — what the file manager can do, screen by screen.
-- [User volumes](https://nxzai.github.io/NextExplorer/admin/user-volumes.html) — assigning folders to the people you add.
+- [NextExplorer documentation](https://explorer.nxz.ai/) — the full upstream manual.
+- [Features](https://explorer.nxz.ai/experience/features.html) — what the file manager can do, screen by screen.
+- [User volumes](https://explorer.nxz.ai/admin/user-volumes.html) — assigning folders to the people you add.
 
 ## What you get on StartOS
 
