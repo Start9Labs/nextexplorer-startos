@@ -9,7 +9,7 @@
 > upstream documentation is accurate and fully applicable — see the
 > Documentation section of `instructions.md` for links.
 
-[NextExplorer](https://github.com/nxzai/NextExplorer) is a web file manager: browse, upload, preview and share files, with local accounts and per-user home folders. On StartOS its files, its database and its regenerable caches live on three separate volumes, the admin credential is owned by StartOS rather than by the application, non-admin accounts reach only the folders an admin assigns them, and the built-in terminal is disabled. Files kept in File Browser or FileBrowser Quantum can be imported into a drive of their own.
+[NextExplorer](https://github.com/nxzai/NextExplorer) is a web file manager: browse, upload, preview and share files, with local accounts and per-user home folders. On StartOS its files, its database and its regenerable caches live on three separate volumes, the admin credential is owned by StartOS rather than by the application, non-admin accounts reach only the folders an admin assigns them, and the built-in terminal is disabled. Locations can be added, renamed and removed with actions, and files kept in File Browser or FileBrowser Quantum can be imported into a location of their own.
 
 - **Upstream repo:** <https://github.com/nxzai/NextExplorer>
 - **Wrapper repo:** <https://github.com/Start9Labs/nextexplorer-startos>
@@ -75,11 +75,11 @@ Three volumes, split by durability.
 | `config` | `/config`   | The SQLite database, the package store, and branding |
 | `cache`  | `/cache`    | Thumbnails and the session store                     |
 
-`/mnt` is `VOLUME_ROOT`, and NextExplorer turns each of its immediate subdirectories into a top-level drive in the UI. An empty `/mnt` therefore presents the user with nothing to click, which is why the `prepare-storage` oneshot creates a `Files` directory inside it.
+`/mnt` is `VOLUME_ROOT`, and NextExplorer lists each of its immediate subdirectories under **Locations** in the UI (upstream's docs and API call them volumes). An empty `/mnt` therefore presents the user with nothing to click, which is why the `prepare-storage` oneshot creates a `Files` directory inside it whenever it holds no location.
 
-`/mnt/_users` is the exception: it is `USER_ROOT`, holding one private directory per account, and NextExplorer excludes the name from the drive listing and from the admin's folder picker.
+`/mnt/_users` is the exception: it is `USER_ROOT`, holding one private directory per account, and NextExplorer excludes the name from the Locations list and from the admin's folder picker.
 
-`/mnt/FileBrowser` exists only after [Import Files from File Browser](#import-files-from-file-browser) has run; it is an ordinary drive and can be renamed or merged into `Files` from the UI.
+`/mnt/FileBrowser` exists only after [Import Files from File Browser](#import-files-from-file-browser) has run; it is an ordinary location: rename or remove it with the [Locations](#locations-add-rename-remove) actions, or move its contents into `Files` from the UI.
 
 Other packages mount the `data` volume by name (Jellyfin, Immich, Nextcloud, qBittorrent and others read or write under it), so the volume id is load-bearing.
 
@@ -140,13 +140,13 @@ There is no first-run screen. Install seeds the store and then asks you for the 
 
 `critical` blocks the service from starting, so NextExplorer never serves without an admin password. It also never starts with a partial one: if either secret is somehow absent, the package raises rather than passing an empty value through, because NextExplorer skips its admin bootstrap below six characters and would leave its setup wizard open to whoever reached it first.
 
-On every start thereafter, the `prepare-storage` oneshot runs as root before the daemon: it creates `/mnt/Files` and hands `/mnt` to uid 1000. The image's own entrypoint chowns `/config` and `/cache` but never the storage root, and the resulting failure is a quiet one — browsing works and every write returns `EACCES` — so if uploads and folder creation fail while the UI is otherwise fine, that oneshot's log line is the first thing to read.
+On every start thereafter, the `prepare-storage` oneshot runs as root before the daemon: it creates `/mnt/Files` if `/mnt` holds no location, and hands `/mnt` to uid 1000. The image's own entrypoint chowns `/config` and `/cache` but never the storage root, and the resulting failure is a quiet one — browsing works and every write returns `EACCES` — so if uploads and folder creation fail while the UI is otherwise fine, that oneshot's log line is the first thing to read.
 
 NextExplorer runs its own database migrations and creates the admin account before it binds the port, so by the time the health check passes the account already exists.
 
 ## Actions
 
-Two actions, both user-facing. Everything else NextExplorer administers from inside its own UI.
+Five actions, all user-facing. Everything else NextExplorer administers from inside its own UI.
 
 ### Set Admin Password
 
@@ -158,9 +158,26 @@ Generates a new random password for the bootstrapped admin account. Run it when 
 - **Repeat safety:** safe to re-run; each run generates a fresh password and the previous one stops working once the service restarts.
 - **Outputs:** the sign-in email and the new password, the password masked and copyable, shown once.
 
+### Locations: Add, Rename, Remove
+
+Three actions in the **Locations** group manage the immediate subdirectories of `/mnt`. NextExplorer cannot do this itself: its API refuses to create a folder at the root, and its UI offers no rename or delete on a location.
+
+- **Add Location** creates `/mnt/<name>`, owned by uid 1000.
+- **Rename Location** takes a location from a select; the name field beneath it starts at that location's current name.
+- **Remove Location** takes a location from a select and deletes it recursively, only once the field beneath it holds that location's exact name; the handler checks the match again.
+
+Common to all three:
+
+- **Names:** trimmed; must not start with `.` or contain `/`; must not be `_users` or one of the path prefixes NextExplorer routes before it looks at a location (`personal`, `share`, `volumes`, compared case-insensitively); must not collide with an existing entry in `/mnt`.
+- **Availability:** any status. NextExplorer reads `/mnt` on every request, so a change shows on the next page load with no restart.
+- **Cost:** instant, except that Remove takes as long as deleting the tree.
+- **What a rename or removal breaks:** NextExplorer stores per-account volume assignments and share links by path, so accounts given the location in their Volumes tab lose it and share links into it stop resolving. Other services pointed at the path must be re-pointed. Nextcloud's external-storage entries follow on Nextcloud's next start, and the action's result says so when Nextcloud is installed.
+- **`Files`:** `prepare-storage` recreates it only when `/mnt` holds no location, so renaming or removing `Files` sticks while any other location exists.
+- **Outputs:** a one-line confirmation.
+
 ### Import Files from File Browser
 
-Copies everything at the root of File Browser's `data` volume into `/mnt/FileBrowser`, so it appears in NextExplorer as a drive named **FileBrowser**. Works for File Browser and FileBrowser Quantum alike, since both share the package id and the volume.
+Copies everything at the root of File Browser's `data` volume into `/mnt/FileBrowser`, so it appears in NextExplorer as a location named **FileBrowser**. Works for File Browser and FileBrowser Quantum alike, since both share the package id and the volume.
 
 - **What it changes:** creates or extends `/mnt/FileBrowser` on the `data` volume. File Browser's volume is mounted read-only and never written.
 - **Availability:** any status; the action is hidden while no `filebrowser` package is installed, and refuses to run if one is not.
@@ -168,9 +185,9 @@ Copies everything at the root of File Browser's `data` volume into `/mnt/FileBro
 - **Repeat safety:** safe to re-run. A file that already exists at the destination is skipped, so a second run picks up only what File Browser gained since.
 - **Outputs:** how many files were imported and their total size, how many were skipped, whether the copies share storage, and the first error if any file could not be read. The same summary is written to the service log as JSON.
 
-Mechanics: a temporary subcontainer of the `nextexplorer` image runs a Node script as root with File Browser's volume at `/import` and this package's `data` volume at `/mnt`. Directories are created as needed, regular files are cloned with `COPYFILE_FICLONE_FORCE` and copied in full when the clone fails, symlinks are recreated with their original targets, other file types are skipped, and everything created is chowned to uid 1000 with the source's modification time. Hidden entries are copied like any other. An empty source is reported as an error rather than producing an empty drive.
+Mechanics: a temporary subcontainer of the `nextexplorer` image runs a Node script as root with File Browser's volume at `/import` and this package's `data` volume at `/mnt`. Directories are created as needed, regular files are cloned with `COPYFILE_FICLONE_FORCE` and copied in full when the clone fails, symlinks are recreated with their original targets, other file types are skipped, and everything created is chowned to uid 1000 with the source's modification time. Hidden entries are copied like any other. An empty source is reported as an error rather than producing an empty location.
 
-**What is not imported:** the File Browser database. Accounts, passwords, per-user folder scopes, share links and settings stay behind; the user re-creates accounts in NextExplorer and grants them the drive.
+**What is not imported:** the File Browser database. Accounts, passwords, per-user folder scopes, share links and settings stay behind; the user re-creates accounts in NextExplorer and grants them the location.
 
 ## Tasks
 
@@ -211,7 +228,7 @@ Note the size implication: `data` is the whole file tree, so the backup is as la
 
 1. **The admin password is owned by StartOS, not by NextExplorer.** Upstream's bootstrap re-asserts `AUTH_ADMIN_PASSWORD` on every start rather than only on first run, so a password changed inside NextExplorer's own settings page is reverted on the next restart. Rotate it with the action instead. Accounts created inside NextExplorer are untouched.
 2. **The built-in terminal is disabled.** Upstream ships `TERMINAL_ENABLED=true`, which gives any admin a shell inside the service container.
-3. **A non-admin account reaches only the folders it was assigned.** With upstream's `USER_VOLUMES=false`, every authenticated account sees every drive under `VOLUME_ROOT` and can write to all of it; `USER_DIR_ENABLED=false` then leaves the per-account space unreachable from the UI. Neither flag is settable from inside NextExplorer, so both are forced on here: a new account starts with its own space alone, and the admin grants drives from the account's Volumes tab. Admins are exempt from both and still see everything.
+3. **A non-admin account reaches only the folders it was assigned.** With upstream's `USER_VOLUMES=false`, every authenticated account sees every location under `VOLUME_ROOT` and can write to all of it; `USER_DIR_ENABLED=false` then leaves the per-account space unreachable from the UI. Neither flag is settable from inside NextExplorer, so both are forced on here: a new account starts with its own space alone, and the admin grants locations from the account's Volumes tab. Admins are exempt from both and still see everything.
 4. **Only Docker Hub is a valid source for the image** — see [Image and Container Runtime](#image-and-container-runtime).
 5. **Importing from File Browser carries files only.** Accounts, passwords, folder scopes and share links are not converted — see [Import Files from File Browser](#import-files-from-file-browser).
 6. **No riscv64 build.** x86_64 and aarch64 only.
@@ -248,6 +265,9 @@ interfaces:
   ui: { type: ui, port: 3000 } # API and SPA on the same port
 actions:
   - set-admin-password
+  - add-location # group Locations
+  - rename-location # group Locations
+  - remove-location # group Locations; recursive delete
   - import-from-filebrowser # files only, reflinked into /mnt/FileBrowser
 tasks:
   - { action: set-admin-password, severity: critical }

@@ -1,7 +1,14 @@
 import { storeJson } from './fileModels/store.json'
 import { i18n } from './i18n'
 import { sdk } from './sdk'
-import { adminEmail, defaultLibrary, mounts, uiPort, volumeRoot } from './utils'
+import {
+  adminEmail,
+  defaultLocation,
+  mounts,
+  uiPort,
+  usersDir,
+  volumeRoot,
+} from './utils'
 
 export const main = sdk.setupMain(async ({ effects }) => {
   console.info(i18n('Starting NextExplorer'))
@@ -27,7 +34,7 @@ export const main = sdk.setupMain(async ({ effects }) => {
         command: [
           'sh',
           '-c',
-          `mkdir -p ${volumeRoot}/${defaultLibrary} && chown -R 1000:1000 ${volumeRoot}`,
+          `{ [ -n "$(find ${volumeRoot} -mindepth 1 -maxdepth 1 -type d ! -name '.*' ! -name ${usersDir})" ] || mkdir ${volumeRoot}/${defaultLocation}; } && chown -R 1000:1000 ${volumeRoot}`,
         ],
         user: 'root',
       },

@@ -1,10 +1,10 @@
 import { manifest as filebrowserManifest } from 'filebrowser-startos/startos/manifest'
 import { i18n } from '../i18n'
 import { sdk } from '../sdk'
-import { importDrive, importMountpoint, volumeRoot } from '../utils'
+import { importLocation, importMountpoint, volumeRoot } from '../utils'
 
 const source = 'filebrowser'
-const target = `${volumeRoot}/${importDrive}`
+const target = `${volumeRoot}/${importLocation}`
 
 // Runs as root inside the image; reflinks where the filesystem allows, so a
 // copy shares storage with the original until either side changes.
@@ -72,10 +72,10 @@ export const importFromFileBrowser = sdk.Action.withoutInput(
   async ({ effects }) => ({
     name: i18n('Import Files from File Browser'),
     description: i18n(
-      'Copy everything stored in File Browser or FileBrowser Quantum into a NextExplorer drive named FileBrowser. File Browser is left untouched, so you can uninstall it once you have checked the result.',
+      'Copy everything stored in File Browser or FileBrowser Quantum into a NextExplorer location named FileBrowser. File Browser is left untouched, so you can uninstall it once you have checked the result.',
     ),
     warning: i18n(
-      'Files only. User accounts, passwords, per-user folder restrictions, share links and settings are not imported. Afterwards, create each account again in NextExplorer and give it access to the FileBrowser drive, and re-create any share links.',
+      'Files only. User accounts, passwords, per-user folder restrictions, share links and settings are not imported. Afterwards, create each account again in NextExplorer and give it access to the FileBrowser location, and re-create any share links.',
     ),
     allowedStatuses: 'any',
     group: null,
@@ -125,11 +125,11 @@ export const importFromFileBrowser = sdk.Action.withoutInput(
 
     const lines = [
       i18n(
-        'Imported ${files} files (${size}) into the ${drive} drive. ${skipped} already there were left as they are.',
+        'Imported ${files} files (${size}) into the ${location} location. ${skipped} already there were left as they are.',
         {
           files: String(n.files),
           size: formatBytes(n.bytes),
-          drive: importDrive,
+          location: importLocation,
           skipped: String(n.skipped),
         },
       ),
@@ -151,8 +151,8 @@ export const importFromFileBrowser = sdk.Action.withoutInput(
     }
     lines.push(
       i18n(
-        'Next: create each account again in NextExplorer and give it access to the ${drive} drive, then re-create any share links. Uninstall File Browser only after every other service that reads its files has been switched to NextExplorer.',
-        { drive: importDrive },
+        'Next: create each account again in NextExplorer and give it access to the ${location} location, then re-create any share links. Uninstall File Browser only after every other service that reads its files has been switched to NextExplorer.',
+        { location: importLocation },
       ),
     )
 
