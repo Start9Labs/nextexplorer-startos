@@ -66,6 +66,10 @@ const dict = {
   'This permanently deletes the location and every file in it. It cannot be undone.': 48,
   'Location Removed': 49,
   '${name} and everything in it have been deleted.': 50,
+  Confirm: 51,
+  'Type ${name} to delete it and everything in it': 52,
+  'Must match the location name exactly': 53,
+  'Enter a name different from the current one': 54,
 } as const
 
 /**

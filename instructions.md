@@ -64,7 +64,7 @@ Your own account is the administrator and always sees every folder.
 
 **Set Admin Password** — generates a new random password for the admin account. Use it the first time, and any time you want to rotate the credential.
 
-**Add Location**, **Rename Location**, **Remove Location** — in the **Locations** group. Manage the top-level folders listed under Locations in NextExplorer, which NextExplorer itself cannot create, rename or delete. Rename and Remove each start by choosing a location. Renaming or removing one breaks everything that refers to it by name: accounts you gave it to in their **Volumes** tab, share links to files inside it, and other services pointed at it. **Remove Location deletes everything in the location, permanently.**
+**Add Location**, **Rename Location**, **Remove Location** — in the **Locations** group. Manage the top-level folders listed under Locations in NextExplorer, which NextExplorer itself cannot create, rename or delete. Rename and Remove each start by choosing a location, and Remove asks you to type its name to confirm. Renaming or removing one breaks everything that refers to it by name: accounts you gave it to in their **Volumes** tab, share links to files inside it, and other services pointed at it. **Remove Location deletes everything in the location, permanently.**
 
 **Import Files from File Browser** — copies the files stored in File Browser or FileBrowser Quantum into a location called FileBrowser. Files only; see [Coming from File Browser](#coming-from-file-browser). Shown only while File Browser is installed.
 

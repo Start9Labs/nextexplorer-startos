@@ -63,6 +63,9 @@ export const renameLocation = sdk.Action.withInput(
         i18n('There is no location named ${name}', { name: from }),
       )
     }
+    if (input.location.value.newName.trim() === from) {
+      throw new Error(i18n('Enter a name different from the current one'))
+    }
     const to = await checkNewLocationName(input.location.value.newName)
     await rename(sdk.volumes.data.subpath(from), sdk.volumes.data.subpath(to))
 

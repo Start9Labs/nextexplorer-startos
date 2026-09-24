@@ -3,7 +3,25 @@ import { i18n } from '../../i18n'
 import { sdk } from '../../sdk'
 import { listLocations, nextcloudHint } from '../../utils'
 
-const { InputSpec, Value } = sdk
+const { InputSpec, Value, Variants } = sdk
+
+const confirmSpec = (name: string) =>
+  InputSpec.of({
+    confirm: Value.text({
+      name: i18n('Confirm'),
+      description: i18n('Type ${name} to delete it and everything in it', {
+        name,
+      }),
+      required: true,
+      default: null,
+      patterns: [
+        {
+          regex: `^${name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`,
+          description: i18n('Must match the location name exactly'),
+        },
+      ],
+    }),
+  })
 
 export const removeLocation = sdk.Action.withInput(
   'remove-location',
@@ -22,13 +40,20 @@ export const removeLocation = sdk.Action.withInput(
   }),
 
   InputSpec.of({
-    location: Value.dynamicSelect(async () => {
+    location: Value.dynamicUnion(async () => {
       const locations = await listLocations()
       return {
         name: i18n('Location'),
         default: locations[0] ?? '',
-        values: Object.fromEntries(locations.map((l) => [l, l])),
         disabled: locations.length ? false : i18n('There are no locations'),
+        variants: Variants.of(
+          Object.fromEntries(
+            (locations.length ? locations : ['']).map((l) => [
+              l,
+              { name: l, spec: confirmSpec(l) },
+            ]),
+          ),
+        ),
       }
     }),
   }),
@@ -36,7 +61,10 @@ export const removeLocation = sdk.Action.withInput(
   async () => null,
 
   async ({ effects, input }) => {
-    const name = input.location
+    const name = input.location.selection
+    if (input.location.value.confirm !== name) {
+      throw new Error(i18n('Must match the location name exactly'))
+    }
     if (!(await listLocations()).includes(name)) {
       throw new Error(i18n('There is no location named ${name}', { name }))
     }

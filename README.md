@@ -164,7 +164,7 @@ Three actions in the **Locations** group manage the immediate subdirectories of 
 
 - **Add Location** creates `/mnt/<name>`, owned by uid 1000.
 - **Rename Location** takes a location from a select; the name field beneath it starts at that location's current name.
-- **Remove Location** takes a location from a select and deletes it recursively.
+- **Remove Location** takes a location from a select and deletes it recursively, only once the field beneath it holds that location's exact name; the handler checks the match again.
 
 Common to all three:
 

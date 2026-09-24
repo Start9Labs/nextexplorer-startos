@@ -53,6 +53,10 @@ export default {
     48: 'Esto elimina de forma permanente la ubicación y todos sus archivos. No se puede deshacer.',
     49: 'Ubicación eliminada',
     50: 'Se han eliminado ${name} y todo su contenido.',
+    51: 'Confirmar',
+    52: 'Escribe ${name} para eliminarla junto con todo su contenido',
+    53: 'Debe coincidir exactamente con el nombre de la ubicación',
+    54: 'Introduce un nombre distinto del actual',
   },
   de_DE: {
     0: 'NextExplorer wird gestartet',
@@ -106,6 +110,10 @@ export default {
     48: 'Dadurch werden der Standort und alle Dateien darin dauerhaft gelöscht. Das lässt sich nicht rückgängig machen.',
     49: 'Standort entfernt',
     50: '${name} wurde mitsamt Inhalt gelöscht.',
+    51: 'Bestätigen',
+    52: 'Geben Sie ${name} ein, um ihn mitsamt Inhalt zu löschen',
+    53: 'Muss genau dem Namen des Standorts entsprechen',
+    54: 'Geben Sie einen anderen als den aktuellen Namen ein',
   },
   pl_PL: {
     0: 'Uruchamianie NextExplorer',
@@ -159,6 +167,10 @@ export default {
     48: 'Spowoduje to trwałe usunięcie lokalizacji i wszystkich plików w niej. Tej operacji nie można cofnąć.',
     49: 'Usunięto lokalizację',
     50: 'Usunięto ${name} wraz z całą zawartością.',
+    51: 'Potwierdź',
+    52: 'Wpisz ${name}, aby usunąć tę lokalizację wraz z całą zawartością',
+    53: 'Musi dokładnie odpowiadać nazwie lokalizacji',
+    54: 'Wpisz nazwę inną niż obecna',
   },
   fr_FR: {
     0: 'Démarrage de NextExplorer',
@@ -212,5 +224,9 @@ export default {
     48: 'Cela supprime définitivement l’emplacement et tous les fichiers qu’il contient. Cette opération est irréversible.',
     49: 'Emplacement supprimé',
     50: '${name} et tout son contenu ont été supprimés.',
+    51: 'Confirmer',
+    52: 'Saisissez ${name} pour le supprimer avec tout son contenu',
+    53: 'Doit correspondre exactement au nom de l’emplacement',
+    54: 'Saisissez un nom différent de l’actuel',
   },
 } satisfies Record<string, LangDict>
