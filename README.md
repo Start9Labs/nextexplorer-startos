@@ -162,7 +162,7 @@ Generates a new random password for the bootstrapped admin account. Run it when 
 
 Three actions in the **Locations** group manage the immediate subdirectories of `/mnt`. NextExplorer cannot do this itself: its API refuses to create a folder at the root, and its UI offers no rename or delete on a location.
 
-- **Add Location** creates `/mnt/<name>`, owned by uid 1000.
+- **Add Location** creates `/mnt/<name>`, owned by uid 1000. A service that depends on NextExplorer can run it directly (`access: 'dependent'`) to get a location of its own; for such a caller a location that already exists is a success, not an error.
 - **Rename Location** takes a location from a select; the name field beneath it starts at that location's current name.
 - **Remove Location** takes a location from a select and deletes it recursively, only once the field beneath it holds that location's exact name; the handler checks the match again.
 
@@ -265,7 +265,7 @@ interfaces:
   ui: { type: ui, port: 3000 } # API and SPA on the same port
 actions:
   - set-admin-password
-  - add-location # group Locations
+  - add-location # group Locations; access: dependent
   - rename-location # group Locations
   - remove-location # group Locations; recursive delete
   - import-from-filebrowser # files only, reflinked into /mnt/FileBrowser
