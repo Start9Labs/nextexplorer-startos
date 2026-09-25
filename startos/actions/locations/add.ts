@@ -3,6 +3,7 @@ import { i18n } from '../../i18n'
 import { sdk } from '../../sdk'
 import {
   checkNewLocationName,
+  listLocations,
   locationNamePattern,
   nextcloudHint,
 } from '../../utils'
@@ -21,6 +22,7 @@ export const addLocation = sdk.Action.withInput(
     allowedStatuses: 'any',
     group: i18n('Locations'),
     visibility: 'enabled',
+    access: 'dependent',
   }),
 
   InputSpec.of({
@@ -35,7 +37,11 @@ export const addLocation = sdk.Action.withInput(
 
   async () => null,
 
-  async ({ effects, input }) => {
+  async ({ effects, input, caller }) => {
+    // A dependent calls this each time it is configured, so its location may already exist.
+    if (caller && (await listLocations()).includes(input.name.trim())) {
+      return null
+    }
     const name = await checkNewLocationName(input.name)
     const path = sdk.volumes.data.subpath(name)
     await mkdir(path)
