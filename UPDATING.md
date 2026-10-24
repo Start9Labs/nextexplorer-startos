@@ -26,6 +26,6 @@ Two traps:
 
 ## Applying the bump
 
-Edit `startos/manifest/index.ts` and set `dockerVersion` to the new tag, then bump `version` and rewrite `releaseNotes` in `startos/versions/current.ts`.
+Edit `startos/manifest/index.ts` and set the `IMAGE` build arg to `nxzai/explorer:<new tag>`, then bump `version` and rewrite `releaseNotes` in `startos/versions/current.ts`. While the root `Dockerfile` exists, keep it unless the new image's `NODE_VERSION` is 24.22.1 or later; if it is, delete it and put `source: { dockerTag: '<new image>' }` back.
 
 Read the release notes for the range being crossed, and check `backend/src/config/env.js` for changes to the environment variables the package sets — `AUTH_ADMIN_EMAIL`, `AUTH_ADMIN_PASSWORD`, `SESSION_SECRET`, `TRUST_PROXY`, `TERMINAL_ENABLED`, `USER_VOLUMES`, `USER_DIR_ENABLED`. That file is the single source of truth for configuration; there are no CLI flags.

@@ -35,11 +35,11 @@
 
 ## Image and Container Runtime
 
-The upstream image is used unmodified, with its own entrypoint, and one subcontainer runs the service. A Node/Express backend serves the API and the prebuilt Vue SPA from a single port.
+The upstream image is used with its own entrypoint, and one subcontainer runs the service. The root `Dockerfile` replaces its `node` binary with `node:24.22.1-alpine3.24`'s, a temporary layer that comes out once upstream ships an image on Node 24.22.1 or later. A Node/Express backend serves the API and the prebuilt Vue SPA from a single port.
 
 | Property      | Value                                                                 |
 | ------------- | --------------------------------------------------------------------- |
-| Image         | `nxzai/explorer`                                                      |
+| Image         | `nxzai/explorer` + root `Dockerfile`                                  |
 | Architectures | x86_64, aarch64                                                       |
 | Entrypoint    | Upstream default                                                      |
 | Runs as       | root, dropping to uid 1000                                            |
@@ -234,7 +234,7 @@ Note the size implication: `data` is the whole file tree, so the backup is as la
 
 ```yaml
 package_id: nextexplorer
-image: nxzai/explorer
+image: nxzai/explorer # + root Dockerfile (Node runtime)
 architectures:
   - x86_64
   - aarch64
