@@ -1,9 +1,6 @@
 import { setupManifest } from '@start9labs/start-sdk'
 import { long, short } from './i18n'
 
-const dockerImage = 'nxzai/explorer'
-const dockerVersion = 'v3.1.0'
-
 export const manifest = setupManifest({
   id: 'nextexplorer',
   title: 'NextExplorer',
@@ -18,7 +15,9 @@ export const manifest = setupManifest({
   images: {
     nextexplorer: {
       source: {
-        dockerTag: `${dockerImage}:${dockerVersion}`,
+        dockerBuild: {
+          buildArgs: { IMAGE: 'nxzai/explorer:v3.1.0' },
+        },
       },
       arch: ['x86_64', 'aarch64'],
       emulateMissing: false,
