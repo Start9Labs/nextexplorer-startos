@@ -59,7 +59,7 @@ Seven are set, and each is applied on every start rather than only at install.
 | --------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `AUTH_ADMIN_EMAIL`    | Identifies the bootstrapped admin account — `admin@nextexplorer.local`                                                                            |
 | `AUTH_ADMIN_PASSWORD` | The credential from the package store; upstream re-asserts it on every start, which is what makes it StartOS-owned                                |
-| `SESSION_SECRET`      | Generated once at install and persisted in the package store; overrides upstream's own persisted session secret                        |
+| `SESSION_SECRET`      | Generated once at install and persisted in the package store; overrides upstream's own persisted session secret                                   |
 | `TRUST_PROXY`         | `1`, because every request arrives through the OS reverse proxy — see [Network Access and Interfaces](#network-access-and-interfaces)             |
 | `TERMINAL_ENABLED`    | Forced off — see [Limitations and Differences](#limitations-and-differences)                                                                      |
 | `USER_VOLUMES`        | Forced on, so a non-admin account reaches only the folders an admin assigned it — see [Limitations and Differences](#limitations-and-differences) |
@@ -69,10 +69,10 @@ Seven are set, and each is applied on every start rather than only at install.
 
 Three volumes, split by durability.
 
-| Volume   | Mount Point | Purpose                                              |
-| -------- | ----------- | ---------------------------------------------------- |
-| `data`   | `/mnt`      | The user's files                                     |
-| `config` | `/config`   | The SQLite database, the package store, and branding |
+| Volume   | Mount Point | Purpose                                                       |
+| -------- | ----------- | ------------------------------------------------------------- |
+| `data`   | `/mnt`      | The user's files                                              |
+| `config` | `/config`   | The SQLite database, the package store, and branding          |
 | `cache`  | `/cache`    | Thumbnails, the session store, and search/folder-size indexes |
 
 `/mnt` is `VOLUME_ROOT`, and NextExplorer lists each of its immediate subdirectories under **Locations** in the UI (upstream's docs and API call them volumes). An empty `/mnt` therefore presents the user with nothing to click, which is why the `prepare-storage` oneshot creates a `Files` directory inside it whenever it holds no location.
