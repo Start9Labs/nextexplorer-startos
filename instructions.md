@@ -48,6 +48,8 @@ Click a file to preview it. Images, video, audio, PDFs and common document forma
 
 The first time you add a lot of files, thumbnails take a little while to appear — they're generated in the background.
 
+Trash and file versions are enabled by default. Deleted files and earlier versions continue to use storage and are included in your StartOS backups. Adjust retention in NextExplorer's settings. The **Remove Location** action bypasses the trash and permanently deletes the whole location, including its retained trash and versions.
+
 ### Sharing
 
 Right-click a file or folder and choose to share it. NextExplorer creates a link you can send to someone. Anyone with the link can open it without an account, so treat those links as secrets.
