@@ -45,7 +45,7 @@ The upstream image is used with its own entrypoint, and one subcontainer runs th
 | Runs as       | root, dropping to uid 1000                                            |
 | Subcontainer  | `nextexplorer-sub` — the `primary` daemon, and the one to `attach` to |
 
-The image declares no `USER` and its entrypoint must start as root: it calls `usermod`/`groupmod` to align the application user with `PUID`/`PGID` and then `gosu`s down to uid 1000. Running the container as a non-root user makes the entrypoint fail outright, so the package launches it as root and lets it drop privileges itself.
+The image declares no `USER`. The package launches its entrypoint as root so it can align the application user with `PUID`/`PGID`, chown `/config` and `/cache`, and then `gosu` down to uid 1000. Upstream also supports a non-root launch, but that skips mount ownership preparation.
 
 The same subcontainer also runs a `prepare-storage` oneshot, ahead of the daemon on every start — see [Installation and First-Run Flow](#installation-and-first-run-flow).
 
@@ -59,7 +59,7 @@ Seven are set, and each is applied on every start rather than only at install.
 | --------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `AUTH_ADMIN_EMAIL`    | Identifies the bootstrapped admin account — `admin@nextexplorer.local`                                                                            |
 | `AUTH_ADMIN_PASSWORD` | The credential from the package store; upstream re-asserts it on every start, which is what makes it StartOS-owned                                |
-| `SESSION_SECRET`      | Generated once at install and persisted; upstream's default is random per boot, which would sign every user out on restart                        |
+| `SESSION_SECRET`      | Generated once at install and persisted in the package store; overrides upstream's own persisted session secret                                   |
 | `TRUST_PROXY`         | `1`, because every request arrives through the OS reverse proxy — see [Network Access and Interfaces](#network-access-and-interfaces)             |
 | `TERMINAL_ENABLED`    | Forced off — see [Limitations and Differences](#limitations-and-differences)                                                                      |
 | `USER_VOLUMES`        | Forced on, so a non-admin account reaches only the folders an admin assigned it — see [Limitations and Differences](#limitations-and-differences) |
@@ -69,11 +69,11 @@ Seven are set, and each is applied on every start rather than only at install.
 
 Three volumes, split by durability.
 
-| Volume   | Mount Point | Purpose                                              |
-| -------- | ----------- | ---------------------------------------------------- |
-| `data`   | `/mnt`      | The user's files                                     |
-| `config` | `/config`   | The SQLite database, the package store, and branding |
-| `cache`  | `/cache`    | Thumbnails and the session store                     |
+| Volume   | Mount Point | Purpose                                                       |
+| -------- | ----------- | ------------------------------------------------------------- |
+| `data`   | `/mnt`      | The user's files                                              |
+| `config` | `/config`   | The SQLite database, the package store, and branding          |
+| `cache`  | `/cache`    | Thumbnails, the session store, and search/folder-size indexes |
 
 `/mnt` is `VOLUME_ROOT`, and NextExplorer lists each of its immediate subdirectories under **Locations** in the UI (upstream's docs and API call them volumes). An empty `/mnt` therefore presents the user with nothing to click, which is why the `prepare-storage` oneshot creates a `Files` directory inside it whenever it holds no location.
 
@@ -85,7 +85,7 @@ Other packages mount the `data` volume by name (Jellyfin, Immich, Nextcloud, qBi
 
 `/cache` is a mounted volume rather than the container's writable layer so that thumbnail generation has somewhere durable to go without inflating the backup.
 
-The application's database is `/config/app.db`.
+The application's database is `/config/app.db`. Search and folder-size indexes live separately in `/cache/index.db` and can be rebuilt. Trash and version metadata stay in the application database; their payloads live in reserved `.nextexplorer` directories within each location or personal folder on `data`, so both are captured by the package's backups.
 
 ## File Models
 
@@ -99,7 +99,7 @@ NextExplorer has no configuration file worth binding: it is configured entirely 
 
 **Yours, but only through the action:** `adminPassword`. It is written by Set Admin Password and read into `AUTH_ADMIN_PASSWORD` on every start, so it is the source of truth for that account rather than whatever NextExplorer has stored.
 
-**Seeded once and then fixed:** `sessionSecret`, generated at install and never rewritten. It is what makes signed-in sessions survive a restart; if it ever went missing the package would refuse to start rather than let the application fall back to a per-boot random value and silently sign everyone out.
+**Seeded once and then fixed:** `sessionSecret`, generated at install and never rewritten. It signs the persistent sessions; if it goes missing the package refuses to start rather than switching to upstream's separately managed secret and invalidating existing cookies.
 
 A hand edit to either key survives — nothing re-asserts them — and `main` holds the file with `.const()`, so writing it restarts the service and the new value reaches the container without any further step. That is what carries a rotated password through while the service is running; it is not a reason to edit the file by hand.
 
@@ -119,7 +119,7 @@ The port is bound on the `main` MultiHost and is not masked.
 
 Every request arrives through the OS reverse proxy, which strips whatever `X-Forwarded-For` the client sent and writes the real client address as the only hop. `TRUST_PROXY=1` is what makes NextExplorer read it: left unset, Express reports the proxy as the peer for every request, and the login rate limiter — ten attempts per fifteen minutes — collapses into one bucket shared by everyone on the server, logging a stack trace each time it fires.
 
-`PUBLIC_URL` is deliberately left unset. Setting it pins CORS to one origin, and StartOS serves the same service over a LAN address and a `.onion` at once. Left unset, NextExplorer allows any origin and share links are built client-side from `window.location.origin`, so every address the user has published works.
+`PUBLIC_URL` is deliberately left unset rather than selecting one canonical address from the user's enabled service addresses. The SPA and API share an origin, so they do not need CORS access. With no origin allowlist configured, upstream denies cross-origin browser access; it does not reject same-origin requests. Share links are built client-side from `window.location.origin`.
 
 The session cookie is `Secure` on every address, because the proxy reports `https` upstream whichever address the request arrived on. That is accurate for the LAN and domain addresses, where the OS terminates TLS; on a `.onion`, where it does not, the cookie still reaches the service from any browser that treats an onion as a trustworthy origin.
 
@@ -136,7 +136,7 @@ There is no first-run screen. Install seeds the store and then asks you for the 
 
 On every start thereafter, the `prepare-storage` oneshot runs as root before the daemon: it creates `/mnt/Files` if `/mnt` holds no location, and hands `/mnt` to uid 1000. The image's own entrypoint chowns `/config` and `/cache` but never the storage root, and the resulting failure is a quiet one — browsing works and every write returns `EACCES` — so if uploads and folder creation fail while the UI is otherwise fine, that oneshot's log line is the first thing to read.
 
-NextExplorer runs its own database migrations and creates the admin account before it binds the port, so by the time the health check passes the account already exists.
+NextExplorer runs its own database migrations and attempts the admin bootstrap before binding the port. Bootstrap failures are logged as warnings rather than aborting startup, so a green health check alone does not prove the admin account was created.
 
 ## Actions
 
@@ -165,6 +165,7 @@ Common to all three:
 
 - **Names:** trimmed; must not start with `.` or contain `/`; must not be `_users` or one of the path prefixes NextExplorer routes before it looks at a location (`personal`, `share`, `volumes`, compared case-insensitively); must not collide with an existing entry in `/mnt`.
 - **Availability:** any status. NextExplorer reads `/mnt` on every request, so a change shows on the next page load with no restart.
+- **Removal bypasses trash:** the action deletes the whole location, including its reserved `.nextexplorer` directory and all retained trash and versions.
 - **Cost:** instant, except that Remove takes as long as deleting the tree.
 - **What a rename or removal breaks:** NextExplorer stores per-account volume assignments and share links by path, so accounts given the location in their Volumes tab lose it and share links into it stop resolving. Other services pointed at the path must be re-pointed. Nextcloud's external-storage entries follow on Nextcloud's next start, and the action's result says so when Nextcloud is installed.
 - **`Files`:** `prepare-storage` recreates it only when `/mnt` holds no location, so renaming or removing `Files` sticks while any other location exists.
@@ -203,16 +204,16 @@ One check, on the only daemon.
 | --------- | --------------- | -------------------------------- |
 | `primary` | "Web Interface" | `GET /healthz` on the local port |
 
-The auth middleware ignores every path outside `/api`, so the check needs no credentials. It passes as soon as the port answers — and that is a meaningful signal here rather than a bare liveness probe, because NextExplorer runs its database migrations and its admin bootstrap inside `await bootstrap()` _before_ `app.listen()`. Nothing answers on port 3000 until both have finished.
+`/healthz` is an explicit public route mounted ahead of session and auth middleware. It returns HTTP 200 with `{"status":"ok"}` once the server listens. The application factory awaits bootstrap before listening, but bootstrap errors can be warnings; the check does not independently validate the database, credentials, or writable storage.
 
-A failure therefore means the process is down or crash-looping, not that it is still initialising. On a first start the likeliest cause is that `prepare-storage` did not complete.
+A failure can mean startup work is still running or the process is down or crash-looping. Check `prepare-storage` and application logs, including database migration or index-move warnings.
 
 ## Backups and Restore
 
 `data` and `config` are copied wholesale — `sdk.Backups.ofVolumes('data', 'config')`. No dump step.
 
-- **Included:** every file the user has stored, the SQLite database with its accounts and shares, the uploaded branding, and the package store — so the admin credential and the session secret.
-- **Excluded:** `cache`. It holds thumbnails and the session store, both of which NextExplorer regenerates; restoring without it costs users a re-login and some thumbnail rework.
+- **Included:** every file the user has stored, retained trash and file versions, the SQLite database with its accounts and shares, the uploaded branding, and the package store — so the admin credential and the session secret.
+- **Excluded:** `cache`. It holds thumbnails, sessions, and search/folder-size indexes. Restoring without it costs users a re-login and regeneration of thumbnails and enabled indexes.
 - **Restore:** complete. Accounts and passwords return as they were, so the install task does not reappear.
 
 The database is SQLite and StartOS quiesces the service before syncing, so it is captured at rest rather than hot.

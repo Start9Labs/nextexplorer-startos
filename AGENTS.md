@@ -34,7 +34,7 @@ verified, tried, and decided belongs in the commit message and the PR body.
 
 ## This repo
 
-- **Run the daemon as root; never set a user on its exec.** The image's entrypoint runs `usermod`/`groupmod` before it drops to uid 1000, and fails as non-root.
+- **Leave the daemon exec user unset.** The entrypoint needs root to prepare ownership of the config and cache mounts before dropping to uid 1000.
 - **Keep the `prepare-storage` oneshot.** The entrypoint never chowns `/mnt`, so without it the app browses but every write fails silently.
 - **Never substitute an empty string for a missing secret.** NextExplorer skips its admin bootstrap below six characters and leaves its setup wizard open.
 - **Don't change the env `main.ts` forces.** Turning `USER_VOLUMES` or `USER_DIR_ENABLED` off gives every account every location, and setting `PUBLIC_URL` pins CORS to one of the several addresses StartOS serves.

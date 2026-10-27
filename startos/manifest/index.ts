@@ -16,7 +16,7 @@ export const manifest = setupManifest({
     nextexplorer: {
       source: {
         dockerBuild: {
-          buildArgs: { IMAGE: 'nxzai/explorer:v3.1.0' },
+          buildArgs: { IMAGE: 'nxzai/explorer:v4.0.1' },
         },
       },
       arch: ['x86_64', 'aarch64'],
