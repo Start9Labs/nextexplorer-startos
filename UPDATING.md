@@ -24,12 +24,12 @@ Expect `amd64 linux` and `arm64 linux`.
 Two traps:
 
 - **The Docker tag keeps the leading `v`.** Git `v2.2.7` is published as `v2.2.7`; the bare `2.2.7` does not exist.
-- **Check Docker Hub, not GHCR.** `ghcr.io/nxzai/explorer` exists but its package visibility was never made public, so anonymous requests return **401**. That is not evidence the image is missing — the repository is simply private. Docker Hub is the canonical registry; the GHCR mirror was added alongside it in v2.0.3, never as a replacement.
+- **Check Docker Hub, not GHCR.** `ghcr.io/nxzai/explorer` exists but its package visibility was never made public, so anonymous requests return **401**. That is not evidence the image is missing. Docker Hub is the canonical registry.
 
 ## Applying the bump
 
-Edit `startos/manifest/index.ts` and set the `IMAGE` build arg to `nxzai/explorer:<new tag>`, then bump `version` and rewrite `releaseNotes` in `startos/versions/current.ts`. While the root `Dockerfile` exists, keep it unless the new image's `NODE_VERSION` is 24.22.1 or later; if it is, delete it and put `source: { dockerTag: '<new image>' }` back.
+Edit `startos/manifest/index.ts` and set the `IMAGE` build arg to `nxzai/explorer:<new tag>`. While the root `Dockerfile` exists, keep it unless the new image's `NODE_VERSION` is 24.22.1 or later; if it is, delete it and put `source: { dockerTag: '<new image>' }` back.
 
-Scale scrutiny to the jump as the packaging guide describes. For feature or breaking releases, read the release notes for the range being crossed, and check `backend/src/config/env.js` for changes to the environment variables the package sets — `AUTH_ADMIN_EMAIL`, `AUTH_ADMIN_PASSWORD`, `SESSION_SECRET`, `TRUST_PROXY`, `TERMINAL_ENABLED`, `USER_VOLUMES`, `USER_DIR_ENABLED`. That file is the single source of truth for configuration; there are no CLI flags.
+For feature or breaking releases, check `backend/src/config/env.js` for changes to the environment variables the package sets — `AUTH_ADMIN_EMAIL`, `AUTH_ADMIN_PASSWORD`, `SESSION_SECRET`, `TRUST_PROXY`, `TERMINAL_ENABLED`, `USER_VOLUMES`, `USER_DIR_ENABLED`. That file is the single source of truth for configuration; there are no CLI flags.
 
-For breaking releases, also check `backend/src/app.js`, `backend/src/routes/health.js`, and `backend/src/server.js` for the `/healthz` probe and bootstrap ordering, `docker/entrypoint.sh` for ownership handling, and `backend/src/services/db.js` for upstream-managed database migrations. Search and folder-size indexes live in `/cache/index.db`; accounts, settings, trash metadata, and version metadata remain in `/config/app.db`. Trash and version payloads live in reserved `.nextexplorer` folders on the data volume.
+For breaking releases, also check `backend/src/app.js`, `backend/src/routes/health.js`, and `backend/src/server.js` for the `/healthz` probe and bootstrap ordering, `docker/entrypoint.sh` for ownership handling, and `backend/src/services/db.js` for upstream-managed database migrations.
