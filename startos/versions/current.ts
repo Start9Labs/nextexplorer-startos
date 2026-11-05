@@ -1,18 +1,18 @@
 import { IMPOSSIBLE, VersionInfo } from '@start9labs/start-sdk'
 
 export const current = VersionInfo.of({
-  version: '4.0.1:1',
+  version: '4.0.1:2',
   releaseNotes: {
     en_US:
-      'Nextcloud and Paperless-ngx can use NextExplorer storage with this version.',
+      'Requires StartOS 0.4.1 or later. Fixes memory use growing while the service runs.',
     es_ES:
-      'Nextcloud y Paperless-ngx pueden usar el almacenamiento de NextExplorer con esta versión.',
+      'Requiere StartOS 0.4.1 o posterior. Corrige el aumento del uso de memoria mientras el servicio está en ejecución.',
     de_DE:
-      'Nextcloud und Paperless-ngx können den Speicher von NextExplorer mit dieser Version nutzen.',
+      'Erfordert StartOS 0.4.1 oder neuer. Behebt einen während der Laufzeit des Dienstes ansteigenden Speicherverbrauch.',
     pl_PL:
-      'Nextcloud i Paperless-ngx mogą korzystać z przestrzeni NextExplorer w tej wersji.',
+      'Wymaga StartOS 0.4.1 lub nowszego. Naprawia wzrost zużycia pamięci podczas działania usługi.',
     fr_FR:
-      'Nextcloud et Paperless-ngx peuvent utiliser le stockage de NextExplorer avec cette version.',
+      "Nécessite StartOS 0.4.1 ou une version ultérieure. Corrige l'augmentation de la consommation de mémoire pendant le fonctionnement du service.",
   },
   migrations: {
     up: async () => {},
